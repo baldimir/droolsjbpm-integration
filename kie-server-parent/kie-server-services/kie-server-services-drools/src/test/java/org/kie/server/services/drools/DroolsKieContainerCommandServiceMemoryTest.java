@@ -103,11 +103,6 @@ public class DroolsKieContainerCommandServiceMemoryTest {
         final KieServices kieServices = KieServices.Factory.get();
 
         kieServer.disposeContainer(CONTAINER_ID);
-        try {
-            Thread.sleep(2000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
         final ReleaseId releaseId = kieServices.newReleaseId(GROUP_ID, ARTIFACT_ID, "0.20." + StringUtils.leftPad(String.valueOf(version % 24), 2, '0'));
         kieServer.createContainer(CONTAINER_ID, new KieContainerResource(CONTAINER_ID, new org.kie.server.api.model.ReleaseId(releaseId)));
 //        kieServer.updateContainerReleaseId(CONTAINER_ID, new org.kie.server.api.model.ReleaseId(releaseId));
