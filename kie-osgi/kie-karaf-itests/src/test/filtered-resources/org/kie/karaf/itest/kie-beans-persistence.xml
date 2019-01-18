@@ -16,22 +16,22 @@
     </kie:kbase>
   </kie:kmodule>
 
-    <bean id="jbpm-ds" class="org.springframework.jdbc.datasource.SimpleDriverDataSource">
-        <property name="driver">
-            <bean class="org.h2.Driver" />
-        </property>
-        <property name="url" value="jdbc:h2:tcp://localhost/./jbpmprocess"/>
-        <property name="username" value="sa"/>
-        <property name="password" value=""/>
-    </bean>
+  <bean id="jbpm-ds" class="org.springframework.jdbc.datasource.SimpleDriverDataSource">
+    <property name="driver">
+      <bean class="${maven.jdbc.driver.class}"/>
+    </property>
+    <property name="url" value="${maven.jdbc.url}"/>
+    <property name="username" value="${maven.jdbc.username}"/>
+    <property name="password" value="${maven.jdbc.password}"/>
+  </bean>
 
-    <bean id="myEmf" class="org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean">
-        <property name="dataSource" ref="jbpm-ds"/>
-        <property name="persistenceUnitName" value="org.jbpm.persistence.jpa.local"/>
-    </bean>
+  <bean id="myEmf" class="org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean">
+    <property name="dataSource" ref="jbpm-ds"/>
+    <property name="persistenceUnitName" value="org.jbpm.persistence.jpa.local"/>
+  </bean>
 
-    <bean id="txManager" class="org.springframework.orm.jpa.JpaTransactionManager">
-        <property name="entityManagerFactory" ref="myEmf"/>
-    </bean>
+  <bean id="txManager" class="org.springframework.orm.jpa.JpaTransactionManager">
+    <property name="entityManagerFactory" ref="myEmf"/>
+  </bean>
 
 </beans>
