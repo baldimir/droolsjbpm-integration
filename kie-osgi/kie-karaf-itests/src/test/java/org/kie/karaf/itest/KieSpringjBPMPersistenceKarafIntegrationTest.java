@@ -36,6 +36,7 @@ import org.ops4j.pax.exam.Configuration;
 import org.ops4j.pax.exam.Option;
 import org.ops4j.pax.exam.junit.PaxExam;
 import org.ops4j.pax.exam.karaf.options.LogLevelOption;
+import org.ops4j.pax.exam.options.WrappedUrlProvisionOption;
 import org.ops4j.pax.exam.spi.reactors.ExamReactorStrategy;
 import org.ops4j.pax.exam.spi.reactors.PerClass;
 import org.ops4j.pax.exam.util.Filter;
@@ -50,14 +51,12 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.inject.Inject;
 import javax.persistence.EntityManagerFactory;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.Callable;
 
 import static org.junit.Assert.assertNotNull;
 import static org.ops4j.pax.exam.CoreOptions.streamBundle;
+import static org.ops4j.pax.exam.CoreOptions.wrappedBundle;
 import static org.ops4j.pax.exam.karaf.options.KarafDistributionOption.*;
 import static org.ops4j.pax.tinybundles.core.TinyBundles.bundle;
 
@@ -73,7 +72,7 @@ public class KieSpringjBPMPersistenceKarafIntegrationTest extends AbstractKieSpr
 
     // this is the way to get actual Spring Application Context through "bridging" Blueprint Container
     @Inject
-    @Filter(value = "(osgi.blueprint.container.symbolicname=Test-Kie-Spring-Bundle)", timeout = 30000)
+    @Filter(value = "(osgi.blueprint.container.symbolicname=Test-Kie-Spring-Bundle)", timeout = 60000)
     private BlueprintContainer container;
 
     @Before
@@ -194,48 +193,57 @@ public class KieSpringjBPMPersistenceKarafIntegrationTest extends AbstractKieSpr
 
     @Configuration
     public static Option[] configure() {
-        Server server = startH2Server();
-        return new Option[]{
-                // Install Karaf Container
-                getKarafDistributionOption(),
+        startH2Server();
+        final String jdbcDriverPath = System.getProperty("jdbc.driver.path");
+        WrappedUrlProvisionOption wrappedJDBCDriver = wrappedBundle("file://" + jdbcDriverPath);
 
-                // Don't bother with local console output as it just ends up cluttering the logs
-                configureConsole().ignoreLocalConsole(),
-                // Force the log level to INFO so we have more details during the test.  It defaults to WARN.
-                logLevel(LogLevelOption.LogLevel.WARN),
+        final List<Option> options = getDefaultOptions();
+        if (jdbcDriverPath != null && !"".equals(jdbcDriverPath)) {
+            options.add(wrappedJDBCDriver);
+        }
+        return options.toArray(new Option[]{});
+    }
 
-                // Option to be used to do remote debugging
-                //  debugConfiguration("5005", true),
+    private static List<Option> getDefaultOptions() {
+        final List<Option> options = new ArrayList<>();
+        // Install Karaf Container
+        options.add(getKarafDistributionOption());
+        // Don't bother with local console output as it just ends up cluttering the logs
+        options.add(configureConsole().ignoreLocalConsole());
+        // Force the log level to INFO so we have more details during the test.  It defaults to WARN.
+        options.add(logLevel(LogLevelOption.LogLevel.WARN));
 
-                // Load Kie-Spring
-                loadKieFeatures("jbpm-spring-persistent"),
-                features(getFeaturesUrl("org.apache.karaf.features", "spring-legacy", getKarafVersion()), "aries-blueprint-spring"),
+        // Option to be used to do remote debugging
+        // options.add(debugConfiguration("5005", true));
 
-                // Create a bundle with META-INF/spring/kie-beans.xml - this should be processed automatically by Spring
-                streamBundle(bundle()
-                        .set(Constants.BUNDLE_MANIFESTVERSION, "2")
-                        .add(Person.class)
-                        .add("META-INF/spring/kie-beans-persistence.xml",
-                                SimpleKieSpringKarafIntegrationTest.class.getResource(SPRING_XML_LOCATION))
-                        .add("META-INF/persistence.xml",
-                                SimpleKieSpringKarafIntegrationTest.class.getResource("/META-INF/persistence.xml"))
-                        .add("drl_kiesample/Hal1.drl",
-                                KieSpringDependencyKarafIntegrationTest.class.getResource(DRL_LOCATION))
-                        .add("META-INF/JBPMorm.xml",
-                                SimpleKieSpringKarafIntegrationTest.class.getResource("/META-INF/JBPMorm.xml"))
-                        .add("META-INF/TaskAuditorm.xml",
-                                SimpleKieSpringKarafIntegrationTest.class.getResource("/META-INF/TaskAuditorm.xml"))
-                        .add("META-INF/Taskorm.xml",
-                                SimpleKieSpringKarafIntegrationTest.class.getResource("/META-INF/Taskorm.xml"))
+        // Load Kie-Spring
+        options.add(loadKieFeatures("jbpm-spring-persistent"));
+        options.add(features(getFeaturesUrl("org.apache.karaf.features", "spring-legacy", getKarafVersion())));
+
+        options.add(streamBundle(bundle()
+                .set(Constants.BUNDLE_MANIFESTVERSION, "2")
+                .add(Person.class)
+                .add("META-INF/spring/kie-beans-persistence.xml",
+                        SimpleKieSpringKarafIntegrationTest.class.getResource(SPRING_XML_LOCATION))
+                .add("META-INF/persistence.xml",
+                        SimpleKieSpringKarafIntegrationTest.class.getResource("/META-INF/persistence.xml"))
+                .add("drl_kiesample/Hal1.drl",
+                        KieSpringDependencyKarafIntegrationTest.class.getResource(DRL_LOCATION))
+                .add("META-INF/JBPMorm.xml",
+                        SimpleKieSpringKarafIntegrationTest.class.getResource("/META-INF/JBPMorm.xml"))
+                .add("META-INF/TaskAuditorm.xml",
+                        SimpleKieSpringKarafIntegrationTest.class.getResource("/META-INF/TaskAuditorm.xml"))
+                .add("META-INF/Taskorm.xml",
+                        SimpleKieSpringKarafIntegrationTest.class.getResource("/META-INF/Taskorm.xml"))
 //                        .set(Constants.IMPORT_PACKAGE, "org.kie.osgi.spring," +
 //                                "org.kie.api," +
 //                                "org.kie.api.runtime," +
 //                                "org.springframework.jdbc.datasource," +
 //                                "*")
-                        .set(Constants.DYNAMICIMPORT_PACKAGE, "*")
-                        .set(Constants.BUNDLE_SYMBOLICNAME, "Test-Kie-Spring-Bundle")
-                        .build()).start()
-        };
-    }
+                .set(Constants.DYNAMICIMPORT_PACKAGE, "*")
+                .set(Constants.BUNDLE_SYMBOLICNAME, "Test-Kie-Spring-Bundle")
+                .build()).start());
 
+        return options;
+    }
 }
